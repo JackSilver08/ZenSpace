@@ -115,9 +115,10 @@ func main() {
     if err != nil || len(addrs) == 0 {
         log.Fatal("❌ Không thể resolve DB_HOST:", err)
     }
-    dbIP := addrs[0]
+    
 
-    dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, pass, dbIP, port, dbName)
+    dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, pass, host, port, dbName)
+
 
     DB, err = sql.Open("mysql", dsn)
     if err != nil {
