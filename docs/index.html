@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zen Space</title>
+    <link rel="stylesheet" href="CSS/index.css" />
+    <link
+      rel="icon"
+      sizes="132x132"
+      href="IMG/ZenSpace.png"
+      type="image/x-icon"
+    />
+  </head>
+  <body>
+    <header>
+      <a href="index.html"><img src="IMG/ZenSpace.png" alt="Logo" /></a>
+
+      <div class="search-container">
+        <input id="search-box" type="search" placeholder="Nhập từ khóa..." />
+      </div>
+
+      <div class="action-buttons">
+        <div
+          id="chat-icon"
+          role="button"
+          tabindex="0"
+          aria-label="Mở chat"
+          style="cursor: pointer"
+        ></div>
+        <a href="#" id="thongBaoBtn">
+          <img src="IMG/ZenBell.png" alt="Thông báo" />
+          <span id="soThongBao" style="color: red; font-weight: bold"></span>
+          Thông báo
+        </a>
+
+        <button id="openPopupBtn">
+          <span class="plus-icon" aria-hidden="true"></span>
+          Đăng bài
+        </button>
+
+        <a href="DangNhap.html" id="loginLink">Đăng nhập</a>
+      </div>
+      <!-- Phần thông tin user, mặc định ẩn -->
+      <div
+        id="userAvatar"
+        style="display: none; margin-top: 20px; align-items: center"
+      >
+        <img
+          id="userAvatarImg"
+          src="IMG/ZenUser.png"
+          alt="Avatar"
+          width="50"
+          height="50"
+          style="border-radius: 50%"
+        />
+        <p id="welcomeText" style="margin-left: 10px; margin-bottom: 0"></p>
+        <a href="DangNhap.html"
+          ><button id="logoutBtn" style="margin-left: 15px">
+            Đăng xuất
+          </button></a
+        >
+      </div>
+      <!-- Form pop-up (ẩn ban đầu) -->
+      <div
+        id="popupOverlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="popupTitle"
+      >
+        <div id="popupForm">
+          <h3 id="popupTitle">Đăng Bài</h3>
+          <form>
+            <label for="title">Tiêu đề:</label>
+            <input type="text" id="title" name="title" required />
+
+            <label for="content">Nội dung:</label>
+            <textarea id="content" name="content" rows="4" required></textarea>
+
+            <div style="text-align: right">
+              <button type="submit">Gửi</button>
+              <button type="button" id="closePopupBtn">Đóng</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </header>
+
+    <!-- Popup chat -->
+
+    <!-- Thẻ ẩn chứa kết quả API -->
+    <div id="response-text" style="display: none"></div>
+    <div id="output" style="padding: 10px; color: green"></div>
+    <main>
+      <h2 style="padding: 10px">Bài viết gần đây</h2>
+      <div id="danhSachBaiDang" style="padding: 10px"></div>
+    </main>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        fetch("http://localhost:8080/LayBaiDang")
+          .then((res) => res.json())
+          .then((data) => {
+            const danhSach = document.getElementById("danhSachBaiDang");
+            danhSach.innerHTML = "";
+
+            data.forEach((bai) => {
+              // Chỉ tạo button với tiêu đề
+              const button = document.createElement("button");
+              button.textContent = bai.tieuDe;
+              button.onclick = () => {
+                window.location.href = `BaiViet.html?id=${bai.id}`;
+              };
+              button.className = "btn-tieu-de";
+              button.style.display = "block";
+              button.style.marginBottom = "10px";
+              button.style.padding = "12px";
+              button.style.width = "100%";
+              button.style.textAlign = "left";
+              button.style.fontSize = "16px";
+              button.style.backgroundColor = "#fff";
+              button.style.border = "1px solid #ccc";
+              button.style.borderRadius = "6px";
+              button.style.cursor = "pointer";
+
+              danhSach.appendChild(button);
+            });
+          })
+          .catch((err) => {
+            console.error("Lỗi tải bài viết:", err);
+            const danhSach = document.getElementById("danhSachBaiDang");
+            danhSach.textContent = "Không thể tải danh sách bài viết.";
+          });
+      });
+    </script>
+
+    <script src="JS/index.js"></script>
+    <script src="JS/DangBai.js"></script>
+  </body>
+</html>

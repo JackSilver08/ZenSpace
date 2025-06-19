@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chi tiết bài viết | Zen Space</title>
+    <link rel="stylesheet" href="CSS/index.css" />
+    <link
+      rel="icon"
+      sizes="132x132"
+      href="IMG/ZenSpace.png"
+      type="image/x-icon"
+    />
+    <style>
+      main {
+        max-width: 800px;
+        margin: 30px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      #chiTietBaiDang h2 {
+        font-size: 28px;
+        color: #2c7be5;
+        margin-bottom: 15px;
+      }
+
+      #chiTietBaiDang p {
+        font-size: 17px;
+        line-height: 1.7;
+        color: #333;
+      }
+
+      .back-link {
+        display: inline-block;
+        margin-top: 25px;
+        color: #2c7be5;
+        font-weight: bold;
+        text-decoration: none;
+      }
+
+      .back-link:hover {
+        text-decoration: underline;
+      }
+      /* Khung chứa bình luận */
+      #binhLuanContainer {
+        margin-top: 40px;
+        padding: 20px;
+        border-top: 2px solid #e0e0e0;
+        background-color: #fafafa;
+        border-radius: 8px;
+        font-family: "Segoe UI", sans-serif;
+      }
+
+      /* Tiêu đề */
+      #binhLuanContainer h3 {
+        font-size: 22px;
+        color: #2c7be5;
+        margin-bottom: 15px;
+      }
+
+      /* Form gửi bình luận */
+      #binhLuanContainer textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        resize: vertical;
+        font-size: 15px;
+        font-family: inherit;
+      }
+
+      #binhLuanContainer button {
+        background-color: #2c7be5;
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 15px;
+        margin-top: 10px;
+        transition: background-color 0.3s ease;
+      }
+
+      #binhLuanContainer button:hover {
+        background-color: #1a5dcc;
+      }
+
+      /* Danh sách bình luận */
+      #binhLuanContainer .comment-item {
+        border-bottom: 1px solid #ddd;
+        padding: 10px 0;
+      }
+
+      #binhLuanContainer .comment-item:last-child {
+        border-bottom: none;
+      }
+
+      #binhLuanContainer .comment-item strong {
+        color: #333;
+      }
+
+      #binhLuanContainer .comment-item em {
+        font-size: 0.85em;
+        color: #888;
+      }
+
+      #binhLuanContainer .comment-item p {
+        margin: 5px 0 0;
+        font-size: 15px;
+        color: #444;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Header giữ nguyên từ index.html -->
+    <header>
+      <a href="index.html">
+        <img src="IMG/ZenSpace.png" alt="Logo" />
+      </a>
+
+      <div class="search-container">
+        <input id="search-box" type="search" placeholder="Nhập từ khóa..." />
+      </div>
+
+      <div class="action-buttons">
+        <div
+          id="chat-icon"
+          role="button"
+          tabindex="0"
+          aria-label="Mở chat"
+          style="cursor: pointer"
+        ></div>
+        <a href="#"
+          ><img src="IMG/ZenBell.png" alt="Inofication" />Thông báo</a
+        >
+        <button id="openPopupBtn">
+          <span class="plus-icon" aria-hidden="true"></span>
+          Đăng bài
+        </button>
+
+        <a href="DangNhap.html" id="loginLink">Đăng nhập</a>
+
+      </div>
+
+      <!-- Phần thông tin user -->
+      <div
+        id="userAvatar"
+        style="display: none; margin-top: 20px; align-items: center"
+      >
+        <img
+          id="userAvatarImg"
+          src="IMG/ZenUser.png"
+          alt="Avatar"
+          width="50"
+          height="50"
+          style="border-radius: 50%"
+        />
+        <p id="welcomeText" style="margin-left: 10px; margin-bottom: 0"></p>
+        <a href="DangNhap.html">
+          <button id="logoutBtn" style="margin-left: 15px">Đăng xuất</button>
+        </a>
+      </div>
+    </header>
+
+    <!-- Nội dung chính -->
+    <main>
+      <div id="chiTietBaiDang">
+        <h2 id="tieuDe">Đang tải...</h2>
+        <p id="noiDung"></p>
+      </div>
+      <a href="index.html" class="back-link">← Quay lại trang chủ</a>
+    </main>
+    <hr />
+   
+      <!-- Chỉ hiện khi đã đăng nhập -->
+      <div id="formBinhLuan" style="margin-top: 20px; display: none">
+        <textarea
+          id="noiDungBinhLuan"
+          placeholder="Viết bình luận..."
+          rows="3"
+          style="width: 100%; resize: none"
+        ></textarea>
+        <button id="guiBinhLuanBtn" style="margin-top: 10px">Gửi</button>
+      </div>
+    </section>
+
+    <!-- Script lấy dữ liệu bài viết -->
+    <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const idBaiDang = new URLSearchParams(window.location.search).get("id");
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const rawIdTaiKhoan = localStorage.getItem("idTaiKhoan");
+  const idTaiKhoan = parseInt(rawIdTaiKhoan);
+  const username = localStorage.getItem("username");
+  const avatarUrl = localStorage.getItem("avatarUrl") || "../IMG/ZenUser.png";
+
+  const main = document.querySelector("main");
+  const binhLuanContainer = document.createElement("div");
+  binhLuanContainer.id = "binhLuanContainer";
+  main.appendChild(binhLuanContainer);
+
+  // ✅ Avatar và tên user
+  const loginLink = document.getElementById("loginLink");
+  if (username && loginLink) loginLink.style.display = "none";
+
+  const userAvatarImg = document.getElementById("userAvatarImg");
+
+    function preloadImage(url, onSuccess, onError) {
+      const img = new Image();
+      img.onload = () => onSuccess(url);
+      img.onerror = () => onError();
+      userAvatarImg.src = "IMG/ZenUser.png";
+    }
+
+    if (userAvatarImg) {
+      preloadImage(
+        avatarUrl,
+        (validUrl) => {
+          userAvatarImg.src = validUrl;
+        },
+        () => {
+          userAvatarImg.src = "IMG/ZenUser.png";
+        }
+      );
+    }
+
+  const welcomeText = document.getElementById("welcomeText");
+  if (welcomeText) welcomeText.textContent = `Xin chào, ${username}`;
+
+  // ✅ Chi tiết bài viết
+  if (idBaiDang) {
+    fetch(`http://localhost:8080/api/baiviet/${idBaiDang}`)
+      .then((res) => res.json())
+      .then((data) => {
+        document.getElementById("tieuDe").textContent = data.tieuDe;
+        document.getElementById("noiDung").textContent = data.noiDung;
+      })
+      .catch((err) => {
+        document.getElementById("chiTietBaiDang").innerHTML =
+          "<p style='color:red;'>Không tìm thấy bài viết.</p>";
+        console.error("Lỗi:", err);
+      });
+  }
+
+  // ✅ Nếu đã đăng nhập hợp lệ → hiện form bình luận
+  if (isLoggedIn && !isNaN(idTaiKhoan)) {
+    const formHTML = `
+      <h3>Viết bình luận:</h3>
+      <textarea id="noiDungBinhLuan" placeholder="Nhập nội dung..." rows="3" style="width: 100%; padding: 10px;"></textarea>
+      <button id="guiBinhLuanBtn" style="margin-top: 10px;">Gửi bình luận</button>
+    `;
+    binhLuanContainer.insertAdjacentHTML("beforeend", formHTML);
+
+    document.getElementById("guiBinhLuanBtn").addEventListener("click", () => {
+      const noiDung = document.getElementById("noiDungBinhLuan").value.trim();
+      if (!noiDung) {
+        alert("Nội dung bình luận không được để trống!");
+        return;
+      }
+
+      const payload = {
+        idBaiDang: parseInt(idBaiDang),
+        idTaiKhoan: idTaiKhoan,
+        noiDung: noiDung,
+      };
+
+      console.log("🚀 Gửi payload:", payload);
+
+      fetch("http://localhost:8080/api/binhluan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Không gửi được bình luận");
+          return res.json();
+        })
+        .then(() => {
+          document.getElementById("noiDungBinhLuan").value = "";
+          taiBinhLuan();
+        })
+        .catch((err) => {
+          console.error("Lỗi:", err);
+          alert("Gửi bình luận thất bại.");
+        });
+    });
+  } else if (isLoggedIn) {
+    binhLuanContainer.innerHTML = `<p style="color:red;">Không xác định được ID tài khoản. Bạn cần đăng nhập lại.</p>`;
+  }
+
+  // ✅ Hàm tải bình luận
+  function taiBinhLuan() {
+    fetch(`http://localhost:8080/api/binhluan/${idBaiDang}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!Array.isArray(data)) throw new Error("Phản hồi không hợp lệ");
+        let html = `<h3>Bình luận (${data.length})</h3><div>`;
+        data.forEach((bl) => {
+          html += `
+            <div class="comment-item">
+              <strong>${bl.tenDangNhap || "Ẩn danh"}</strong> 
+              <em>(${new Date(bl.ngayBinhLuan).toLocaleString()})</em>
+              <p>${bl.noiDung}</p>
+            </div>
+          `;
+        });
+        html += "</div>";
+        document
+          .getElementById("binhLuanContainer")
+          .insertAdjacentHTML("beforeend", html);
+      })
+      .catch((err) => {
+        console.error("Lỗi tải bình luận:", err);
+        binhLuanContainer.innerHTML = `<p style='color:red;'>Không tải được bình luận.</p>`;
+      });
+  }
+
+  taiBinhLuan();
+});
+
+</script>
+
+  </body>
+</html>
