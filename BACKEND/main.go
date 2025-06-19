@@ -20,13 +20,7 @@ func init() {
             return d.DialContext(ctx, "udp", "8.8.8.8:53")
         },
     }
-    // ✅ Test DNS trước
-    addrs, err := net.LookupHost("db4free.net")
-    if err != nil {
-        log.Println("🔥 DNS lỗi:", err)
-    } else {
-        log.Println("🌐 Resolve OK:", addrs)
-    }
+
 }
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -110,12 +104,9 @@ func main() {
         dbName = "ZenSpaceDB"
     }
 
-    // ✅ Resolve IP trước ➜ bỏ qua DNS nội bộ Render
-    addrs, err := net.LookupHost(host)
-    if err != nil || len(addrs) == 0 {
-        log.Fatal("❌ Không thể resolve DB_HOST:", err)
-    }
+
     
+var err error
 
     dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, pass, host, port, dbName)
 
