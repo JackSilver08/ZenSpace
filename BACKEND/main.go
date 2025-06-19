@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 )
 func init() {
+    // ✅ Bắt buộc Go dùng DNS của Google
     net.DefaultResolver = &net.Resolver{
         PreferGo: true,
         Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -19,13 +20,13 @@ func init() {
             return d.DialContext(ctx, "udp", "8.8.8.8:53")
         },
     }
+    // ✅ Test DNS trước
     addrs, err := net.LookupHost("db4free.net")
-if err != nil {
-    log.Println("🔥 DNS lỗi:", err)
-} else {
-    log.Println("🌐 Resolve OK:", addrs)
-}
-
+    if err != nil {
+        log.Println("🔥 DNS lỗi:", err)
+    } else {
+        log.Println("🌐 Resolve OK:", addrs)
+    }
 }
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,10 +84,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 
 func main() {
-    // ✅ Lấy thông tin DB từ biến môi trường, fallback cho local
+    // ✅ Đọc biến môi trường (có fallback)
     host := os.Getenv("DB_HOST")
     if host == "" {
-        host = "127.0.0.1"
+        host = "db4free.net"
     }
 
     port := os.Getenv("DB_PORT")
@@ -109,10 +110,15 @@ func main() {
         dbName = "ZenSpaceDB"
     }
 
-    dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, pass, host, port, dbName)
+    // ✅ Resolve IP trước ➜ bỏ qua DNS nội bộ Render
+    addrs, err := net.LookupHost(host)
+    if err != nil || len(addrs) == 0 {
+        log.Fatal("❌ Không thể resolve DB_HOST:", err)
+    }
+    dbIP := addrs[0]
 
-    // ✅ Kết nối DB
-    var err error
+    dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, pass, dbIP, port, dbName)
+
     DB, err = sql.Open("mysql", dsn)
     if err != nil {
         log.Fatal("❌ Không thể mở kết nối MySQL:", err)
@@ -124,9 +130,11 @@ func main() {
 
     log.Println("✅ Kết nối MySQL thành công!")
 
-    // ✅ Thiết lập router
+    // ✅ Khởi tạo router
     router := mux.NewRouter()
     router.Use(enableCORS)
+
+    // Các endpoint handler
     router.HandleFunc("/hello", Hello).Methods("GET", "OPTIONS")
     router.HandleFunc("/", handler)
     router.HandleFunc("/DangNhap", DangNhap)
@@ -138,15 +146,14 @@ func main() {
     router.HandleFunc("/api/binhluan", ThemBinhLuan).Methods("POST", "OPTIONS")
     router.HandleFunc("/api/binhluan/{id}", LayBinhLuanTheoBaiDang).Methods("GET", "OPTIONS")
 
-    // ✅ Cấu hình cổng
-    port = os.Getenv("PORT")
-    if port == "" {
-        port = "8080"
+    // ✅ Cổng chạy server
+    serverPort := os.Getenv("PORT")
+    if serverPort == "" {
+        serverPort = "8080"
     }
-    log.Printf("🚀 Server chạy tại cổng %s...\n", port)
+    log.Printf("🚀 Server chạy tại cổng %s...\n", serverPort)
 
-    // ✅ Khởi động server
-    if err := http.ListenAndServe(":"+port, router); err != nil {
+    if err := http.ListenAndServe(":"+serverPort, router); err != nil {
         log.Fatal("❌ Không thể chạy server:", err)
     }
 }
