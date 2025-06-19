@@ -1,0 +1,319 @@
+body {
+  background-color: #001f3f; /* hoặc #002244 tuỳ ý */
+}
+
+/* === RESET CƠ BẢN === */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* === HEADER === */
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: white; /* đổi từ #002f5f thành trắng */
+  color: #002f5f; /* text/icon đổi thành xanh đậm */
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+header img {
+  height: 32px;
+}
+
+.search-container {
+  flex: 1;
+  margin: 0 20px;
+}
+
+.search-container input[type="search"] {
+  background-color: #003366;
+  color: white;
+  width: 95%;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* === ACTION BUTTONS === */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.action-buttons a {
+  color: #002f5f;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 0.3s;
+  font-weight: 500;
+}
+
+.action-buttons a:hover {
+  background-color: #004b99;
+}
+
+.action-buttons img {
+  height: 20px;
+  margin-right: 6px;
+}
+
+/* === MAIN === */
+main {
+  background-color: #001f3f; /* nền xanh dương đậm */
+  color: white;
+  font-family: "Segoe UI", sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  margin-top: 100px; /* ⚠ Đẩy main xuống, KHÔNG bị header che */
+}
+
+main h2 {
+  color: #00bfff;
+  border-bottom: 2px solid #00bfff;
+  margin-bottom: 20px;
+  padding-bottom: 6px;
+  margin-top: 20px;
+}
+
+/* === BÀI VIẾT === */
+#danhSachBaiDang {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 300px; /* hoặc 400px tùy bạn */
+  transition: all 0.3s ease;
+}
+
+.post-card {
+  background-color: #003366;
+  border-left: 4px solid #00aaff;
+  border-radius: 10px;
+  padding: 16px;
+  transition: transform 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.post-card:hover {
+  transform: translateY(-3px);
+}
+
+.post-card h3 {
+  font-size: 18px;
+  margin-bottom: 6px;
+  color: #ffffff;
+}
+
+.post-card p {
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #e0e0e0;
+}
+
+.post-meta {
+  font-size: 12px;
+  color: #cccccc;
+  border-top: 1px solid #225577;
+  padding-top: 6px;
+  font-style: italic;
+}
+
+/* === NÚT ĐĂNG BÀI === */
+#openPopupBtn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#openPopupBtn:hover {
+  background-color: #0056b3;
+}
+
+/* === POPUP FORM === */
+#popupOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  z-index: 999;
+}
+
+#popupOverlay.active {
+  display: block;
+}
+
+#popupForm {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #ffffff;
+  color: #000;
+  padding: 24px;
+  border-radius: 12px;
+  width: 340px;
+  z-index: 1000;
+}
+
+#popupForm input,
+#popupForm textarea {
+  width: 100%;
+  padding: 8px 10px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+#popupForm button[type="submit"],
+#closePopupBtn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#popupForm button[type="submit"] {
+  background-color: #28a745;
+  color: white;
+}
+
+#popupForm button[type="submit"]:hover {
+  background-color: #1e7e34;
+}
+
+#closePopupBtn {
+  background-color: #dc3545;
+  color: white;
+  margin-left: 10px;
+}
+
+#closePopupBtn:hover {
+  background-color: #b02a37;
+}
+
+/* === AVATAR USER === */
+#userAvatar {
+  background-color: #a0c2e4;
+  padding: 10px;
+  border-radius: 30px;
+  color: white;
+  margin-left: 16px; /* hoặc 12px tuỳ chỉnh */
+}
+
+#welcomeText {
+  font-weight: 500;
+}
+
+#logoutBtn {
+  background-color: #f44336;
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  margin-left: 12px;
+}
+
+#logoutBtn:hover {
+  background-color: #c62828;
+}
+
+.btn-tieu-de {
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  color: #00aaff; /* Màu xanh dương */
+}
+.btn-tieu-de:hover {
+  background-color: #eaeaea;
+}
+
+.bai-dang {
+  margin-bottom: 12px;
+  color: #002f5f;
+}
+
+.xoa-bai {
+  font-size: 20px;
+  cursor: pointer;
+  margin-left: 15px;
+  transition: transform 0.2s ease;
+}
+
+.xoa-bai:hover {
+  transform: scale(1.2);
+  color: red;
+}
+
+/* CSS cho phần user avatar */
+/* CSS tối ưu cho user avatar */
+#userAvatar {
+  display: flex; /* Bật flexbox */
+  align-items: center; /* Căn giữa theo chiều dọc */
+  flex-wrap: nowrap; /* Không xuống dòng */
+  white-space: nowrap; /* Không xuống dòng cho text */
+  overflow: visible; /* Đảm bảo không bị ẩn */
+  width: auto; /* Chiều rộng tự động */
+  max-width: 100%; /* Nhưng không vượt container */
+}
+
+/* Đảm bảo tất cả phần tử con là inline-flex */
+#userAvatar > * {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0; /* Không bị co lại */
+}
+
+#userAvatarImg {
+  width: 40px; /* Giảm kích thước avatar */
+  height: 40px;
+  border-radius: 50%; /* Tròn hoàn toàn */
+  object-fit: cover; /* Đảm bảo ảnh không bị méo */
+  border: 2px solid #e0e0e0;
+}
+
+#welcomeText {
+  font-size: 0.85rem; /* Chữ nhỏ hơn */
+  color: #555;
+  white-space: nowrap; /* Không xuống dòng */
+}
+
+#logoutBtn {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center; /* Căn giữa theo chiều dọc */
+}
+
+#logoutBtn:hover {
+  background-color: #c0392b;
+}
