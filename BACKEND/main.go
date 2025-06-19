@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 )
@@ -64,22 +65,50 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 
 func main() {
-	 var err error
+    // ✅ Lấy thông tin DB từ biến môi trường, fallback cho local
+    host := os.Getenv("DB_HOST")
+    if host == "" {
+        host = "127.0.0.1"
+    }
 
-    DB, err = sql.Open("mysql", "root:Tuan@1234@tcp(127.0.0.1:3306)/ZenSpaceDB?parseTime=true")
+    port := os.Getenv("DB_PORT")
+    if port == "" {
+        port = "3306"
+    }
+
+    user := os.Getenv("DB_USER")
+    if user == "" {
+        user = "root"
+    }
+
+    pass := os.Getenv("DB_PASS")
+    if pass == "" {
+        pass = "Tuan@1234"
+    }
+
+    dbName := os.Getenv("DB_NAME")
+    if dbName == "" {
+        dbName = "ZenSpaceDB"
+    }
+
+    dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, pass, host, port, dbName)
+
+    // ✅ Kết nối DB
+    var err error
+    DB, err = sql.Open("mysql", dsn)
     if err != nil {
         log.Fatal("❌ Không thể mở kết nối MySQL:", err)
     }
 
-    err = DB.Ping()
-    if err != nil {
+    if err = DB.Ping(); err != nil {
         log.Fatal("❌ Không thể ping tới MySQL:", err)
     }
 
     log.Println("✅ Kết nối MySQL thành công!")
-	
+
+    // ✅ Thiết lập router
     router := mux.NewRouter()
-	router.Use(enableCORS)
+    router.Use(enableCORS)
     router.HandleFunc("/hello", Hello).Methods("GET", "OPTIONS")
     router.HandleFunc("/", handler)
     router.HandleFunc("/DangNhap", DangNhap)
@@ -87,12 +116,19 @@ func main() {
     router.HandleFunc("/DangBai", DangBai)
     router.HandleFunc("/LayBaiDang", LayBaiDang)
     router.HandleFunc("/api/baiviet/{id}", LayChiTietBaiDang).Methods("GET", "OPTIONS")
-	router.HandleFunc("/XoaBaiDang/{id}", XoaBaiDang).Methods("DELETE", "OPTIONS") // thay thế LayBaiDang nếu tên handler khác
+    router.HandleFunc("/XoaBaiDang/{id}", XoaBaiDang).Methods("DELETE", "OPTIONS")
     router.HandleFunc("/api/binhluan", ThemBinhLuan).Methods("POST", "OPTIONS")
     router.HandleFunc("/api/binhluan/{id}", LayBinhLuanTheoBaiDang).Methods("GET", "OPTIONS")
-    log.Println("🚀 Server chạy tại cổng 8080...")
-    err = http.ListenAndServe(":8080", router)
-    if err != nil {
+
+    // ✅ Cấu hình cổng
+    port = os.Getenv("PORT")
+    if port == "" {
+        port = "8080"
+    }
+    log.Printf("🚀 Server chạy tại cổng %s...\n", port)
+
+    // ✅ Khởi động server
+    if err := http.ListenAndServe(":"+port, router); err != nil {
         log.Fatal("❌ Không thể chạy server:", err)
     }
 }
