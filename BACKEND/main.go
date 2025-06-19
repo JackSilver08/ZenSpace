@@ -1,27 +1,18 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 
 	"github.com/gorilla/mux"
 )
 func init() {
-    // ✅ Bắt buộc Go dùng DNS của Google
-    net.DefaultResolver = &net.Resolver{
-        PreferGo: true,
-        Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-            d := net.Dialer{}
-            return d.DialContext(ctx, "udp", "8.8.8.8:53")
-        },
-    }
-
+ 
 }
+
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
