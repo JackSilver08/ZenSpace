@@ -57,7 +57,7 @@ async function dangNhap(username, password) {
       const avatarPath =
         user.avatar && user.avatar.trim() !== ""
           ? user.avatar
-          : "../IMG/ZenUser.png";
+          : "IMG/ZenUser.png";
       localStorage.setItem("idTaiKhoan", user.id); // 👈 Bổ sung dòng này
       localStorage.setItem("username", user.hoten || username);
       localStorage.setItem("avatarUrl", avatarPath);

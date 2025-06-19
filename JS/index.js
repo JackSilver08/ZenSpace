@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
       emptyMessage.className = "empty-chat-message";
       emptyMessage.innerHTML = `
         <div class="empty-chat-content">
-          <img src="../IMG/empty-chat.png" alt="Empty chat" />
+          <img src="IMG/empty-chat.png" alt="Empty chat" />
           <p>Bạn chưa có ai để nói chuyện</p>
         </div>
       `;
@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // ==== User avatar & login ====
   const username = localStorage.getItem("username");
-  const avatarUrl = localStorage.getItem("avatarUrl") || "../IMG/ZenUser.png";
+  const avatarUrl = localStorage.getItem("avatarUrl") || "IMG/ZenUser.png";
 
   if (username) {
     const loginLink = document.getElementById("loginLink");
@@ -51,7 +51,25 @@ document.addEventListener("DOMContentLoaded", function () {
     if (userAvatarDiv) userAvatarDiv.style.display = "block";
 
     const userAvatarImg = document.getElementById("userAvatarImg");
-    if (userAvatarImg) userAvatarImg.src = avatarUrl;
+
+    function preloadImage(url, onSuccess, onError) {
+      const img = new Image();
+      img.onload = () => onSuccess(url);
+      img.onerror = () => onError();
+      userAvatarImg.src = "IMG/ZenUser.png";
+    }
+
+    if (userAvatarImg) {
+      preloadImage(
+        avatarUrl,
+        (validUrl) => {
+          userAvatarImg.src = validUrl;
+        },
+        () => {
+          userAvatarImg.src = "IMG/ZenUser.png";
+        }
+      );
+    }
 
     const welcomeText = document.getElementById("welcomeText");
     if (welcomeText) welcomeText.textContent = `Xin chào, ${username}`;
