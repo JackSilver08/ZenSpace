@@ -4,45 +4,66 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/gorilla/mux"
 )
 
-// ĐĂNG KÝ TÀI KHOẢN
+
+
+const (
+	defaultAvatar = "IMG/ZenUser.png"
+)
+
 // Cấu trúc dữ liệu cho đăng ký
-type YeuCauDangKy struct {  // JSON = Javascript Object Notation ( 1 định dạng phổ biến để truyền dữ liệu trong GO)
-    TenDangNhap string `json:"username"` // Định nghĩa cấu trúc ánh xạ JSON
+type YeuCauDangKy struct {
+    TenDangNhap string `json:"username"`
     Email       string `json:"email"`
     MatKhau     string `json:"password"`
     XacNhanMK   string `json:"confirmPassword"`
 }
+
+
+
 func DangKy(w http.ResponseWriter, r *http.Request) {
-    // CORS headers : Ý nghĩa của CORS (Cross-Origin Resource Sharing) là một cơ chế bảo mật của trình duyệt cho phép (hoặc từ chối) một website (frontend) gửi yêu cầu HTTP đến một domain khác (backend)
-    w.Header().Set("Access-Control-Allow-Origin", "*") // Cho phép mọi nguồn (domain) truy cập vào tài nguyên của bạn (API/server)
-    w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Cho phép phía client (trình duyệt hoặc ứng dụng) được gửi header Content-Type trong yêu cầu
-    w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Cho phép phía client gọi các HTTP method như: POST: Gửi dữ liệu, OPTIONS: Dùng cho preflight request, tức là trình duyệt kiểm tra trước xem có được gửi POST thật hay không
-    w.Header().Set("Content-Type", "application/json") // Server trả về nội dung kiểu JSON
-    // Đây là kiểm tra xem request có phải là phương thức OPTIONS không
-    if r.Method == http.MethodOptions { 
+    // CORS headers
+    w.Header().Set("Access-Control-Allow-Origin", "*")
+    w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+    w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+    w.Header().Set("Content-Type", "application/json")
+
+    if r.Method == http.MethodOptions {
         w.WriteHeader(http.StatusOK)
         return
     }
-    // Đảm bảo rằng endpoint này chỉ dùng để xử lý POST, ví dụ như đăng nhập, đăng ký, gửi dữ liệu JSON
+
     if r.Method != http.MethodPost {
         http.Error(w, "Chỉ chấp nhận POST", http.StatusMethodNotAllowed)
         return
     }
 
-    // Phần xử lý đăng ký vẫn giữ nguyên từ đây...
     var req YeuCauDangKy
-    err := json.NewDecoder(r.Body).Decode(&req)
-    if err != nil {
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, "Lỗi khi đọc dữ liệu", http.StatusBadRequest)
         return
     }
 
+    // Validate input
+    if req.TenDangNhap == "" || req.Email == "" || req.MatKhau == "" {
+        json.NewEncoder(w).Encode(PhanHoi{
+            ThanhCong: false,
+            ThongBao:  "Vui lòng điền đầy đủ thông tin",
+        })
+        return
+    }
+
     if req.MatKhau != req.XacNhanMK {
-        json.NewEncoder(w).Encode(PhanHoi{ThanhCong: false, ThongBao: "Mật khẩu xác nhận không khớp"})
+        json.NewEncoder(w).Encode(PhanHoi{
+            ThanhCong: false,
+            ThongBao:  "Mật khẩu xác nhận không khớp",
+        })
         return
     }
 
@@ -53,29 +74,188 @@ func DangKy(w http.ResponseWriter, r *http.Request) {
     }
     defer db.Close()
 
+    // Kiểm tra tài khoản tồn tại
     var exists int
-    err = db.QueryRow("SELECT COUNT(*) FROM TaiKhoan WHERE tenDangNhap = ?", req.TenDangNhap).Scan(&exists)
-    if err != nil || exists > 0 {
-        json.NewEncoder(w).Encode(PhanHoi{ThanhCong: false, ThongBao: "Tên đăng nhập đã tồn tại"})
-        return
-    }
-
-    res, err := db.Exec("INSERT INTO TaiKhoan (tenDangNhap, email, matKhau) VALUES (?, ?, ?)", req.TenDangNhap, req.Email, req.MatKhau)
+    err = db.QueryRow(`
+        SELECT COUNT(*) FROM TaiKhoan 
+        WHERE tenDangNhap = ? OR email = ?
+    `, req.TenDangNhap, req.Email).Scan(&exists)
+    
     if err != nil {
-        json.NewEncoder(w).Encode(PhanHoi{ThanhCong: false, ThongBao: "Lỗi khi tạo tài khoản: " + err.Error()})
+        json.NewEncoder(w).Encode(PhanHoi{
+            ThanhCong: false,
+            ThongBao:  "Lỗi kiểm tra tài khoản: " + err.Error(),
+        })
+        return
+    }
+    
+    if exists > 0 {
+        json.NewEncoder(w).Encode(PhanHoi{
+            ThanhCong: false,
+            ThongBao:  "Tên đăng nhập hoặc email đã tồn tại",
+        })
         return
     }
 
-    rowsAffected, _ := res.RowsAffected()
-    if rowsAffected == 0 {
-        json.NewEncoder(w).Encode(PhanHoi{ThanhCong: false, ThongBao: "Không thể thêm tài khoản"})
+    // Thêm tài khoản mới với avatar mặc định
+    res, err := db.Exec(`
+        INSERT INTO TaiKhoan 
+        (tenDangNhap, email, matKhau, avatar) 
+        VALUES (?, ?, ?, ?)`,
+        req.TenDangNhap,
+        req.Email,
+        req.MatKhau,
+        defaultAvatar, // Avatar mặc định
+    )
+
+    if err != nil {
+        json.NewEncoder(w).Encode(PhanHoi{
+            ThanhCong: false,
+            ThongBao:  "Lỗi khi tạo tài khoản: " + err.Error(),
+        })
         return
     }
 
-    json.NewEncoder(w).Encode(PhanHoi{ThanhCong: true, ThongBao: "Đăng ký thành công"})
+    id, _ := res.LastInsertId()
+    
+    // Tạo token ngay sau khi đăng ký thành công
+    tokenString, err := generateJWTToken(int(id), req.TenDangNhap, "user")
+    if err != nil {
+        json.NewEncoder(w).Encode(PhanHoi{
+            ThanhCong: false,
+            ThongBao:  "Lỗi tạo token: " + err.Error(),
+        })
+        return
+    }
+
+    // Trả về thông tin user và token
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "success": true,
+        "message": "Đăng ký thành công",
+        "token":   tokenString,
+        "user": map[string]interface{}{
+            "id":        id,
+            "tenDangNhap": req.TenDangNhap,
+            "email":     req.Email,
+            "avatar":    defaultAvatar,
+            "phanQuyen": "user",
+        },
+    })
 }
 
+// Hàm tạo JWT token
+func generateJWTToken(id int, username string, role string) (string, error) {
+    claims := jwt.MapClaims{
+        "id":          id,
+        "tenDangNhap": username,
+        "phanQuyen":   role,
+        "exp":         time.Now().Add(24 * time.Hour).Unix(),
+    }
+
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+    return token.SignedString(jwtKey)
+}
+
+func LayThongTinNguoiDung(w http.ResponseWriter, r *http.Request) {
+     // CORS headers
+    w.Header().Set("Access-Control-Allow-Origin", "*")
+    w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+    w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+    w.Header().Set("Content-Type", "application/json")
+
+    if r.Method == http.MethodOptions {
+        w.WriteHeader(http.StatusOK)
+        return
+    }
+
+    if r.Method != http.MethodPost {
+        http.Error(w, "Chỉ chấp nhận POST", http.StatusMethodNotAllowed)
+        return
+    }
+
+    vars := mux.Vars(r)
+    id := vars["id"]
+
+    db, err := sql.Open("mysql", "root:Tuan@1234@tcp(127.0.0.1:3306)/ZenSpaceDB")
+    if err != nil {
+        json.NewEncoder(w).Encode(map[string]interface{}{
+            "success": false,
+            "message": "Database connection error",
+        })
+        return
+    }
+    defer db.Close()
+
+    // Sử dụng sql.NullString cho trường avatar có thể NULL
+    var user struct {
+        ID          int
+        TenDangNhap string
+        Email       string
+        PhanQuyen   string
+        NgayTao     sql.NullTime
+        Avatar      sql.NullString
+    }
+
+    err = db.QueryRow(`
+        SELECT 
+            id, 
+            tenDangNhap, 
+            email, 
+            phanQuyen, 
+            ngayTao, 
+            avatar 
+        FROM TaiKhoan 
+        WHERE id = ?`, id).Scan(
+        &user.ID,
+        &user.TenDangNhap,
+        &user.Email,
+        &user.PhanQuyen,
+        &user.NgayTao,
+        &user.Avatar,
+    )
+
+    if err != nil {
+        if err == sql.ErrNoRows {
+            json.NewEncoder(w).Encode(map[string]interface{}{
+                "success": false,
+                "message": "User not found",
+            })
+        } else {
+            json.NewEncoder(w).Encode(map[string]interface{}{
+                "success": false,
+                "message": "Database query error: " + err.Error(),
+            })
+        }
+        return
+    }
+
+    // Xử lý các trường NULL
+    avatar := "IMG/ZenUser.png"
+    if user.Avatar.Valid {
+        avatar = user.Avatar.String
+    }
+
+    ngayTao := ""
+    if user.NgayTao.Valid {
+        ngayTao = user.NgayTao.Time.Format(time.RFC3339)
+    }
+
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "success": true,
+        "data": map[string]interface{}{
+            "user": map[string]interface{}{
+                "id":          user.ID,
+                "tenDangNhap": user.TenDangNhap,
+                "email":       user.Email,
+                "phanQuyen":   user.PhanQuyen,
+                "ngayTao":     ngayTao,
+                "avatar":      avatar,
+            },
+        },
+    })
+}
 // ĐĂNG NHẬP
+var jwtKey = []byte("your-secret-key")
 // Cấu trúc để nhận dữ liệu JSON từ client
 type YeuCauDangNhap struct {
 	TenDangNhap string `json:"TenDangNhap"`
@@ -90,70 +270,111 @@ type PhanHoi struct {
 
 
 func DangNhap(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Access-Control-Allow-Origin", "*")
-    w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-    w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-    if r.Method == "OPTIONS" {
-        w.WriteHeader(http.StatusOK)
-        return
-    }
-    if r.Method != "POST" {
-        http.Error(w, "Chỉ chấp nhận POST", http.StatusMethodNotAllowed)
-        return
-    }
-    w.Header().Set("Content-Type", "application/json")
+	// Headers cho CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Content-Type", "application/json")
 
-    var req YeuCauDangNhap
-    err := json.NewDecoder(r.Body).Decode(&req)
-    if err != nil {
-        http.Error(w, "Lỗi khi đọc dữ liệu", http.StatusBadRequest)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Chỉ chấp nhận POST", http.StatusMethodNotAllowed)
+		return
+	}
+
+	 var req struct {
+        TenDangNhap string `json:"TenDangNhap"`
+        MatKhau     string `json:"MatKhau"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
         return
     }
 
     db, err := sql.Open("mysql", "root:Tuan@1234@tcp(127.0.0.1:3306)/ZenSpaceDB")
     if err != nil {
-        http.Error(w, "Không thể kết nối database", http.StatusInternalServerError)
+        http.Error(w, "Database connection error", http.StatusInternalServerError)
         return
     }
     defer db.Close()
 
-    // Lấy mật khẩu đã lưu trong db theo username
-    var storedPassword string
-    err = db.QueryRow("SELECT matKhau FROM TaiKhoan WHERE tenDangNhap = ?", req.TenDangNhap).Scan(&storedPassword)
+    var user struct {
+        ID       int
+        MatKhau  string
+        Avatar   sql.NullString
+        PhanQuyen string
+    }
+
+    err = db.QueryRow(`
+        SELECT 
+            id, 
+            matKhau,
+            avatar,
+            phanQuyen
+        FROM TaiKhoan 
+        WHERE tenDangNhap = ?`, req.TenDangNhap).Scan(
+        &user.ID,
+        &user.MatKhau,
+        &user.Avatar,
+        &user.PhanQuyen,
+    )
+
     if err != nil {
         if err == sql.ErrNoRows {
-            json.NewEncoder(w).Encode(PhanHoi{ThanhCong: false, ThongBao: "Tài khoản không tồn tại"})
+            json.NewEncoder(w).Encode(map[string]interface{}{
+                "success": false,
+                "message": "Invalid username or password",
+            })
         } else {
-            json.NewEncoder(w).Encode(PhanHoi{ThanhCong: false, ThongBao: "Lỗi truy vấn database: " + err.Error()})
+            json.NewEncoder(w).Encode(map[string]interface{}{
+                "success": false,
+                "message": "Database error: " + err.Error(),
+            })
         }
         return
     }
 
-    // So sánh mật khẩu
-    if storedPassword != req.MatKhau {
-        json.NewEncoder(w).Encode(PhanHoi{ThanhCong: false, ThongBao: "Mật khẩu không đúng"})
+    if user.MatKhau != req.MatKhau {
+        json.NewEncoder(w).Encode(map[string]interface{}{
+            "success": false,
+            "message": "Invalid username or password",
+        })
         return
     }
 
-    // Lấy thêm thông tin email và id (hoặc bạn có thể lấy trong cùng query trên)
-    var id int
-    var email string
-    err = db.QueryRow("SELECT id, email FROM TaiKhoan WHERE tenDangNhap = ?", req.TenDangNhap).Scan(&id, &email)
+    // Xử lý avatar
+    avatar := "IMG/ZenUser.png"
+    if user.Avatar.Valid && user.Avatar.String != "" {
+        avatar = user.Avatar.String
+    }
+
+    // Tạo token
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+        "id":          user.ID,
+        "tenDangNhap": req.TenDangNhap,
+        "phanQuyen":   user.PhanQuyen,
+        "exp":         time.Now().Add(24 * time.Hour).Unix(),
+    })
+
+    tokenString, err := token.SignedString(jwtKey)
     if err != nil {
-        json.NewEncoder(w).Encode(PhanHoi{ThanhCong: false, ThongBao: "Lỗi lấy thông tin tài khoản: " + err.Error()})
+        http.Error(w, "Failed to generate token", http.StatusInternalServerError)
         return
     }
 
-  nguoiDung := map[string]interface{}{
-    "id":     id,
-    "hoten":  req.TenDangNhap,
-    "avatar": "../IMG/ZenUser.png", // hoặc để rỗng
-}
-
-json.NewEncoder(w).Encode(map[string]interface{}{
-    "success": true,
-    "user":    nguoiDung,
-})
-
-
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "success": true,
+        "token":   tokenString,
+        "user": map[string]interface{}{
+            "id":          user.ID,
+            "tenDangNhap": req.TenDangNhap,
+            "avatar":      avatar,
+            "phanQuyen":   user.PhanQuyen,
+        },
+    })	
 }

@@ -42,7 +42,7 @@ async function dangNhap(username, password) {
     const response = await fetch("http://localhost:8080/DangNhap", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tenDangNhap: username, matKhau: password }),
+      body: JSON.stringify({ TenDangNhap: username, MatKhau: password }), // ✅ Viết hoa đúng
     });
 
     if (!response.ok) {
@@ -50,18 +50,25 @@ async function dangNhap(username, password) {
     }
 
     const data = await response.json();
-    console.log("🧩 Server trả về:", data);
+    console.log("🧪 Token trả về từ server:", data.token);
 
     if (data.success) {
+      console.log("✅ Token nhận được:", data.token);
       const user = data.user || {};
       const avatarPath =
         user.avatar && user.avatar.trim() !== ""
           ? user.avatar
-          : "IMG/ZenUser.png";
-      localStorage.setItem("idTaiKhoan", user.id); // 👈 Bổ sung dòng này
+          : "IMG/ZenUSer.png";
+
+      // ✅ THÊM DÒNG NÀY
+      localStorage.setItem("token", data.token);
+
+      localStorage.setItem("idTaiKhoan", user.id);
       localStorage.setItem("username", user.hoten || username);
       localStorage.setItem("avatarUrl", avatarPath);
-      localStorage.setItem("isLoggedIn", "true"); // 👈 Cũng nên bổ sung nếu chưa có
+      localStorage.setItem("role", user.phanQuyen); // ✅ THÊM DÒNG NÀY
+      localStorage.setItem("isLoggedIn", "true");
+
       window.location.href = "index.html";
     } else {
       loginMessage.textContent =

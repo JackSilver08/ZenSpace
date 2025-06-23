@@ -2,34 +2,65 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 )
 
 
 var DB *sql.DB  // ✅ Chỉ giữ ở đây
 
+func validateToken(r *http.Request) (*jwt.Token, error) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return nil, errors.New("authorization header missing")
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return nil, errors.New("authorization header format must be Bearer {token}")
+	}
+
+	tokenString := parts[1]
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtKey, nil
+	})
+
+	if err != nil || !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	return token, nil
+}
+
+
 func init() {
  
 }
 
 func enableCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization") // ✅ thêm Authorization
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+        if r.Method == http.MethodOptions {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
 
-		next.ServeHTTP(w, r)
-	})
+        next.ServeHTTP(w, r)
+    })
 }
 
 func Hello(w http.ResponseWriter, r *http.Request) {
@@ -114,16 +145,37 @@ var err error
     router.Use(enableCORS)
 
     // Các endpoint handler
-    router.HandleFunc("/hello", Hello).Methods("GET", "OPTIONS")
     router.HandleFunc("/", handler)
-    router.HandleFunc("/DangNhap", DangNhap)
-    router.HandleFunc("/DangKy", DangKy)
-    router.HandleFunc("/DangBai", DangBai)
-    router.HandleFunc("/LayBaiDang", LayBaiDang)
-    router.HandleFunc("/api/baiviet/{id}", LayChiTietBaiDang).Methods("GET", "OPTIONS")
-    router.HandleFunc("/XoaBaiDang/{id}", XoaBaiDang).Methods("DELETE", "OPTIONS")
-    router.HandleFunc("/api/binhluan", ThemBinhLuan).Methods("POST", "OPTIONS")
-    router.HandleFunc("/api/binhluan/{id}", LayBinhLuanTheoBaiDang).Methods("GET", "OPTIONS")
+router.HandleFunc("/hello", Hello).Methods("GET", "OPTIONS")
+// Tài khoản
+router.HandleFunc("/api/nguoidung/{id}", TrangCaNhanHandler)
+router.HandleFunc("/api/xoataikhoan/{id}", XoaTaiKhoanHandler).Methods("DELETE", "OPTIONS")
+router.HandleFunc("/api/nguoidung/{id}/avatar", DoiAvatarHandler).Methods("PUT", "OPTIONS")
+router.HandleFunc("/api/timkiemnguoidung", TimKiemNguoiDung).Methods("GET", "OPTIONS")
+router.HandleFunc("/api/chat/gui", GuiTinNhanHandler).Methods("POST", "OPTIONS")
+router.HandleFunc("/api/chat/lichsu/{id1}/{id2}", LayLichSuTinNhanHandler).Methods("GET", "OPTIONS")
+
+// Đăng nhập / Đăng ký
+router.HandleFunc("/DangNhap", DangNhap).Methods("POST", "OPTIONS")
+router.HandleFunc("/DangKy", DangKy).Methods("POST", "OPTIONS")
+
+// Bài đăng
+router.HandleFunc("/DangBai", DangBai).Methods("POST", "OPTIONS")
+router.HandleFunc("/LayBaiDang", LayBaiDang).Methods("GET", "OPTIONS")
+router.HandleFunc("/api/baiviet/{id}", LayChiTietBaiDang).Methods("GET", "OPTIONS")
+router.HandleFunc("/SuaBaiDang/{id}", SuaBaiDang).Methods("PUT", "OPTIONS")
+router.HandleFunc("/XoaBaiDang/{id}", XoaBaiDang).Methods("DELETE", "OPTIONS")
+
+// Bình luận
+router.HandleFunc("/api/binhluan", ThemBinhLuan).Methods("POST", "OPTIONS")
+router.HandleFunc("/api/binhluan/{id}", LayBinhLuanTheoBaiDang).Methods("GET", "OPTIONS")
+router.HandleFunc("/XoaBinhLuan/{id}", XoaBinhLuan).Methods("DELETE", "OPTIONS") // nếu có
+
+// Cảm xúc
+router.HandleFunc("/ThemCamXuc/{idBaiDang}", ThemCamXuc).Methods("POST", "OPTIONS")
+router.HandleFunc("/ThongKeCamXuc/{idBaiDang}", ThongKeCamXuc).Methods("GET", "OPTIONS")
+
+
 
     // ✅ Cổng chạy server
     serverPort := os.Getenv("PORT")

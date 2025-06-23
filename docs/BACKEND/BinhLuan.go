@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -25,12 +26,13 @@ func LayBinhLuanTheoBaiDang(w http.ResponseWriter, r *http.Request) {
 	idBaiDang := vars["id"]
 
 	rows, err := DB.Query(`
-		SELECT b.noiDung, t.tenDangNhap, b.ngayBinhLuan
-		FROM binhluan b
-		JOIN taikhoan t ON b.idTaiKhoan = t.id
-		WHERE b.idBaiDang = ?
-		ORDER BY b.ngayBinhLuan ASC
-	`, idBaiDang)
+  SELECT b.id, b.idBaiDang, b.idTaiKhoan, b.noiDung, t.tenDangNhap, b.ngayBinhLuan
+  FROM binhluan b
+  JOIN taikhoan t ON b.idTaiKhoan = t.id
+  WHERE b.idBaiDang = ?
+  ORDER BY b.ngayBinhLuan ASC
+`, idBaiDang)
+
 	if err != nil {
 		http.Error(w, "Lỗi truy vấn bình luận", http.StatusInternalServerError)
 		return
@@ -40,17 +42,22 @@ func LayBinhLuanTheoBaiDang(w http.ResponseWriter, r *http.Request) {
 	var binhLuans []BinhLuan
 	for rows.Next() {
 		var bl BinhLuan
-		if err := rows.Scan(&bl.NoiDung, &bl.TenDangNhap, &bl.NgayBinhLuan); err != nil {
-			http.Error(w, "Lỗi đọc dữ liệu", http.StatusInternalServerError)
-			return
-		}
+		if err := rows.Scan(&bl.ID, &bl.IDBaiDang, &bl.IDTaiKhoan, &bl.NoiDung, &bl.TenDangNhap, &bl.NgayBinhLuan); err != nil {
+  log.Println("❌ Lỗi scan bình luận:", err) // Log ra console
+  http.Error(w, "Không đọc được dữ liệu bình luận", http.StatusInternalServerError)
+  return
+}
+
+
 		binhLuans = append(binhLuans, bl)
 	}
 if binhLuans == nil {
-	binhLuans = []BinhLuan{}
+    binhLuans = []BinhLuan{}
 }
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(binhLuans)
+
+w.Header().Set("Content-Type", "application/json")
+json.NewEncoder(w).Encode(binhLuans)
+
 }
 
 // Thêm bình luận mới
