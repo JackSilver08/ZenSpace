@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Thông tin tài khoản - Zen Space</title>
+    <link rel="stylesheet" href="CSS/TaiKhoan.css" />
+    <link
+      rel="icon"
+      sizes="132x132"
+      href="IMG/Zenpacia 4.0.png"
+      type="image/x-icon"
+    />
+  </head>
+  <body>
+    <div id="profilePage">
+      <h2>Thông tin tài khoản</h2>
+
+      <!-- Ảnh đại diện -->
+      <div id="profile-avatar">
+        <img
+          src="IMG/ZenUser.png"
+          id="profileAvatarImg"
+          alt="Avatar người dùng"
+          width="150"
+          height="150"
+          style="object-fit: cover; border-radius: 50%"
+        />
+        <input type="file" id="changeAvatarInput" style="display: none" />
+      </div>
+
+      <!-- Tên người dùng -->
+      <p>
+        <strong>Tên người dùng:</strong>
+        <span id="profileUsername">Đang tải...</span>
+      </p>
+
+      <!-- Bài viết -->
+      <div id="userPosts">
+        <h3>Bài viết của bạn</h3>
+        <ul id="postList">
+          <li>Đang tải bài viết...</li>
+        </ul>
+      </div>
+      <div id="chatContainer" style="margin-top: 10px; display: none">
+        <button id="btnMoChat">💬 Nhắn tin</button>
+      </div>
+
+      <div class="admin-controls" id="adminControls" style="display: none">
+        <button id="btnXoaTaiKhoan">Xóa tài khoản này</button>
+      </div>
+    </div>
+    <div
+      id="chatPopup"
+      style="
+        display: none;
+        position: fixed;
+        bottom: 80px;
+        right: 30px;
+        width: 320px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        z-index: 999;
+      "
+    >
+      <div style="padding: 10px; background: #eee; font-weight: bold">
+        📨 Chat với <span id="chatTenNguoiNhan">...</span>
+        <button
+          style="float: right"
+          onclick="document.getElementById('chatPopup').style.display='none'"
+        >
+          ✖
+        </button>
+      </div>
+      <div
+        id="chatNoiDung"
+        style="
+          max-height: 200px;
+          overflow-y: auto;
+          padding: 10px;
+          font-size: 14px;
+        "
+      ></div>
+      <div style="display: flex; padding: 10px; gap: 5px">
+        <input
+          id="chatInput"
+          placeholder="Nhập tin nhắn..."
+          style="flex: 1; padding: 5px"
+        />
+        <button id="btnGuiChat">Gửi</button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const userId = new URLSearchParams(window.location.search).get("id");
+        if (!userId) {
+          alert("Thiếu ID người dùng.");
+          window.location.href = "index.html";
+          return;
+        }
+
+        const currentUserId = localStorage.getItem("idTaiKhoan");
+        const currentUserRole = localStorage.getItem("role");
+        const token = localStorage.getItem("token");
+
+        function fetchWithAuth(url, options = {}) {
+          options.headers = options.headers || {};
+          if (token) {
+            options.headers["Authorization"] = "Bearer " + token;
+          }
+          return fetch(url, options);
+        }
+
+        // 🔄 Lấy dữ liệu người dùng & bài viết
+        fetchWithAuth(`http://127.0.0.1:8080/api/nguoidung/${userId}`)
+          .then((res) => {
+            if (!res.ok) throw new Error("Không tìm thấy người dùng.");
+            return res.json();
+          })
+          .then((data) => {
+            if (!data.success || !data.data?.user) {
+              throw new Error(data.message || "Dữ liệu trả về không hợp lệ");
+            }
+
+            const user = data.data.user;
+            const posts = data.data.baiViets || [];
+
+            // 👉 Hiển thị thông tin
+            const avatar =
+              user.avatar?.trim() !== "" ? user.avatar : "IMG/ZenUser.png";
+            document.getElementById("profileUsername").textContent =
+              user.tenDangNhap;
+            document.getElementById("profileAvatarImg").src = avatar;
+
+            // 👉 Danh sách bài viết
+            const postList = document.getElementById("postList");
+            postList.innerHTML = posts.length
+              ? ""
+              : "<li>Chưa có bài viết nào.</li>";
+            posts.forEach((post) => {
+              const li = document.createElement("li");
+              const ngayDang = post.ngayDang
+                ? new Date(post.ngayDang).toLocaleString("vi-VN")
+                : "";
+              li.textContent = `${post.tieuDe} (${ngayDang}): ${post.noiDung}`;
+              postList.appendChild(li);
+            });
+
+            // 👉 Hiện nút Xóa nếu là admin
+            if (
+              currentUserRole === "admin" &&
+              currentUserId &&
+              currentUserId !== user.id.toString()
+            ) {
+              const btnXoa = document.getElementById("btnXoaTaiKhoan");
+              const controls = document.getElementById("adminControls");
+              controls.style.display = "block";
+              btnXoa.addEventListener("click", () => {
+                if (confirm("Bạn có chắc muốn xóa tài khoản này không?")) {
+                  fetchWithAuth(
+                    `http://localhost:8080/api/xoataikhoan/${user.id}`,
+                    {
+                      method: "DELETE",
+                    }
+                  )
+                    .then((res) => {
+                      if (res.ok) {
+                        alert("✅ Đã xóa tài khoản.");
+                        window.location.href = "index.html";
+                      } else {
+                        return res.json().then((j) => {
+                          alert(j.message || "❌ Không thể xóa tài khoản.");
+                        });
+                      }
+                    })
+                    .catch(() => alert("❌ Lỗi khi gửi yêu cầu xóa."));
+                }
+              });
+            }
+
+            if (currentUserId !== user.id.toString()) {
+              document.getElementById("chatContainer").style.display = "block";
+              const chatButton = document.getElementById("btnMoChat");
+              const chatPopup = document.getElementById("chatPopup");
+              const chatTen = document.getElementById("chatTenNguoiNhan");
+              const chatNoiDung = document.getElementById("chatNoiDung");
+              const chatInput = document.getElementById("chatInput");
+              const btnGuiChat = document.getElementById("btnGuiChat");
+
+              chatButton.addEventListener("click", () => {
+                chatTen.textContent = user.tenDangNhap;
+                chatPopup.style.display = "block";
+                chatNoiDung.innerHTML =
+                  "<p><i>⏳ Đang tải lịch sử chat...</i></p>";
+
+                fetchWithAuth(
+                  `http://localhost:8080/api/chat/lichsu/${currentUserId}/${user.id}`
+                )
+                  .then((res) => res.json())
+                  .then((data) => {
+                    chatNoiDung.innerHTML = "";
+
+                    if (
+                      Array.isArray(data.tinNhan) &&
+                      data.tinNhan.length > 0
+                    ) {
+                      data.tinNhan.forEach((msg) => {
+                        const p = document.createElement("p");
+                        p.textContent = `${
+                          msg.nguoiGuiID == currentUserId ? "🧍 Bạn" : "👤 Họ"
+                        }: ${msg.noiDung}`;
+                        chatNoiDung.appendChild(p);
+                      });
+                    } else {
+                      chatNoiDung.innerHTML =
+                        "<p><i>Không có tin nhắn nào.</i></p>";
+                    }
+                  })
+                  .catch((err) => {
+                    console.error("❌ Lỗi tải lịch sử chat:", err);
+                    chatNoiDung.innerHTML =
+                      "<p><i>Không thể tải lịch sử chat.</i></p>";
+                  });
+              });
+
+              btnGuiChat.addEventListener("click", () => {
+                const noiDung = chatInput.value.trim();
+                if (!noiDung) return;
+
+                const payload = {
+                  nguoiGuiID: parseInt(currentUserId),
+                  nguoiNhanID: user.id,
+                  noiDung: noiDung,
+                };
+
+                fetchWithAuth("http://localhost:8080/api/chat/gui", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                })
+                  .then((res) => res.json())
+                  .then((data) => {
+                    if (data.success) {
+                      const p = document.createElement("p");
+                      p.textContent = `🧍 Bạn: ${noiDung}`;
+                      chatNoiDung.appendChild(p);
+                      chatInput.value = "";
+                      chatNoiDung.scrollTop = chatNoiDung.scrollHeight;
+                    } else {
+                      alert(
+                        "❌ " + (data.message || "Không gửi được tin nhắn.")
+                      );
+                    }
+                  })
+                  .catch((err) => {
+                    console.error("❌ Lỗi gửi tin nhắn:", err);
+                    alert("Không thể gửi tin nhắn.");
+                  });
+              });
+            }
+
+            // 🔙 Nút quay lại
+            const backButton = document.createElement("button");
+            backButton.className = "back-home-button";
+            backButton.innerHTML = "← Quay lại trang chủ";
+            backButton.onclick = () => {
+              window.location.href = "index.html";
+            };
+            document.getElementById("profilePage").appendChild(backButton);
+          })
+          .catch((err) => {
+            alert(err.message || "Không thể tải thông tin người dùng.");
+            window.location.href = "index.html";
+          });
+
+        // 🔁 Đổi avatar
+        document
+          .getElementById("profileAvatarImg")
+          .addEventListener("click", () => {
+            document.getElementById("changeAvatarInput").click();
+          });
+
+        document
+          .getElementById("changeAvatarInput")
+          .addEventListener("change", (event) => {
+            const file = event.target.files[0];
+            if (!file || !file.type.startsWith("image/")) {
+              alert("Vui lòng chọn một tệp ảnh hợp lệ.");
+              return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = reader.result;
+              fetchWithAuth(
+                `http://localhost:8080/api/nguoidung/${userId}/avatar`,
+                {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ avatar: base64 }),
+                }
+              )
+                .then((res) => res.json())
+                .then((data) => {
+                  if (data.success) {
+                    alert("Đổi avatar thành công!");
+                    document.getElementById("profileAvatarImg").src = base64;
+                  } else {
+                    alert("Lỗi: " + (data.message || "Không thể đổi avatar."));
+                  }
+                })
+                .catch(() => alert("Lỗi kết nối khi đổi avatar."));
+            };
+
+            reader.readAsDataURL(file);
+          });
+      })();
+    </script>
+  </body>
+</html>

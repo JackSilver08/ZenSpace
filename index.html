@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zenpacia</title>
+    <link rel="stylesheet" href="CSS/index.css" />
+    <link
+      rel="icon"
+      sizes="132x132"
+      href="IMG/Zenpacia 4.0.png"
+      type="image/x-icon"
+    />
+  </head>
+  <body>
+    <header>
+      <a href="index.html"><img src="IMG/Zenpacia 4.0.png" alt="Logo" /></a>
+
+      <div class="search-container">
+        <input id="search-box" type="search" placeholder="Nhập từ khóa..." />
+      </div>
+
+      <div class="action-buttons">
+        <div
+          id="chat-icon"
+          role="button"
+          tabindex="0"
+          aria-label="Mở chat"
+          style="cursor: pointer"
+        ></div>
+        <a href="#" id="thongBaoBtn">
+          <img src="IMG/ZenBell.png" alt="Thông báo" />
+          <span id="soThongBao" style="color: red; font-weight: bold"></span>
+          Thông báo
+        </a>
+
+        <button id="openPopupBtn">
+          <span class="plus-icon" aria-hidden="true"></span>
+          Đăng bài
+        </button>
+
+        <a href="DangNhap.html" id="loginLink">Đăng nhập</a>
+      </div>
+      <!-- Phần thông tin user, mặc định ẩn -->
+      <div id="userAvatarDropdown" class="dropdown">
+        <div id="userAvatar">
+          <img id="userAvatarImg" src="IMG/ZenUser.png" alt="Avatar" />
+          <span id="welcomeText">Chào Tuấn!</span>
+        </div>
+
+        <div id="dropdownContent">
+          <a href="#" id="accountInfoBtn">Thông tin tài khoản</a>
+          <a href="DangNhap.html" id="logoutBtn">Đăng xuất</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Popup chat -->
+
+    <!-- Form pop-up (ẩn ban đầu) -->
+    <div
+      id="popupOverlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="popupTitle"
+    >
+      <div id="popupForm">
+        <h3 id="popupTitle">Đăng Bài</h3>
+        <form>
+          <label for="title">Tiêu đề:</label>
+          <input type="text" id="title" name="title" required />
+
+          <label for="content">Nội dung:</label>
+          <textarea id="content" name="content" rows="4" required></textarea>
+
+          <div style="text-align: right">
+            <button type="submit">Gửi</button>
+            <button type="button" id="closePopupBtn">Đóng</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <!-- Thẻ ẩn chứa kết quả API -->
+    <div id="response-text" style="display: none"></div>
+    <div id="output" style="padding: 10px; color: green"></div>
+    <main>
+      <h2 style="padding: 10px">Bài viết gần đây</h2>
+      <div id="danhSachBaiDang" style="padding: 10px"></div>
+    </main>
+    <!-- Pop-up sửa bài viết -->
+    <div
+      id="popupSuaBai"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+      "
+    >
+      <div
+        style="
+          background: #fff;
+          padding: 20px;
+          border-radius: 10px;
+          width: 450px;
+          max-width: 90%;
+        "
+      >
+        <h3>📝 Chỉnh sửa bài viết</h3>
+        <input
+          id="popupEditTitle"
+          type="text"
+          placeholder="Tiêu đề mới"
+          style="
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+          "
+        />
+        <textarea
+          id="popupEditContent"
+          rows="5"
+          placeholder="Nội dung mới"
+          style="width: 100%; padding: 10px; font-size: 15px"
+        ></textarea>
+        <div style="text-align: right; margin-top: 10px">
+          <button id="btnHuySua">Hủy</button>
+          <button
+            id="btnLuuSua"
+            style="background: #2c7be5; color: white; margin-left: 10px"
+          >
+            Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const userId = localStorage.getItem("idTaiKhoan");
+        const token = localStorage.getItem("token");
+        const accountInfoBtn = document.getElementById("accountInfoBtn");
+        const avatarImg = document.getElementById("userAvatarImg");
+        const welcomeText = document.getElementById("welcomeText");
+        const userDropdown = document.getElementById("userAvatarDropdown");
+        const danhSach = document.getElementById("danhSachBaiDang");
+        // 👉 Nếu chưa đăng nhập
+        if (!userId || !token) {
+          userDropdown.style.display = "none";
+          return;
+        }
+
+        // 👉 Bọc async hàm xử lý thông tin người dùng
+        (async () => {
+          try {
+            const res = await fetch(
+              `http://localhost:8080/api/nguoidung/${userId}`,
+              {
+                headers: { Authorization: "Bearer " + token },
+              }
+            );
+            if (!res.ok) throw new Error("Phản hồi không hợp lệ");
+            const data = await res.json();
+
+            if (!data.success || !data.data?.user) {
+              throw new Error(
+                data.message || "Không thể lấy dữ liệu người dùng"
+              );
+            }
+
+            const user = data.data.user;
+
+            const avatar =
+              user.avatar && user.avatar.trim() !== ""
+                ? user.avatar
+                : "IMG/ZenUser.png";
+
+            avatarImg.src = avatar;
+            welcomeText.textContent = `Chào ${user.tenDangNhap || "bạn"}!`;
+            userDropdown.style.display = "flex";
+
+            // 👉 Tại đây có thể dùng `user` an toàn: mở chat, kiểm tra quyền...
+          } catch (err) {
+            console.error("❌ Lỗi khi tải thông tin người dùng:", err.message);
+            userDropdown.style.display = "none";
+          }
+        })();
+
+        // 👉 Sự kiện click vào ảnh đại diện → về trang cá nhân
+        accountInfoBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (userId) {
+            window.location.href = `TaiKhoan.html?id=${userId}`;
+          } else {
+            alert("Chưa đăng nhập!");
+          }
+        });
+
+        // 👉 Gọi API để tải danh sách bài viết
+        fetch("http://localhost:8080/LayBaiDang")
+          .then((res) => res.json())
+          .then((data) => {
+            danhSach.innerHTML = "";
+            data.forEach((bai) => {
+              const button = document.createElement("button");
+              button.textContent = bai.tieuDe;
+              button.onclick = () => {
+                window.location.href = `BaiViet.html?id=${bai.id}`;
+              };
+              button.className = "btn-tieu-de";
+              button.style.cssText = `
+          display: block;
+          margin-bottom: 10px;
+          padding: 12px;
+          width: 100%;
+          text-align: left;
+          font-size: 16px;
+          background-color: #fff;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+          cursor: pointer;
+        `;
+              danhSach.appendChild(button);
+            });
+          })
+          .catch((err) => {
+            console.error("❌ Lỗi tải bài viết:", err);
+            danhSach.textContent = "Không thể tải danh sách bài viết.";
+          });
+      });
+    </script>
+
+    <script src="JS/index.js"></script>
+    <script src="JS/DangBai.js"></script>
+  </body>
+</html>
